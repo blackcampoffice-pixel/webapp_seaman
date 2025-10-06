@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SEAMAN — сделки со Stars</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background: var(--tg-theme-bg-color, #0e1621); color: var(--tg-theme-text-color, #fff); }
+    .wrap { padding: 16px; max-width: 560px; margin: 0 auto; }
+    .card { background: var(--tg-theme-secondary-bg-color, #17212b); border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+    h1 { margin: 0 0 8px; font-size: 18px; }
+    label { display:block; margin:12px 0 6px; opacity:.85 }
+    input[type="number"], input[type="text"], select {
+      width:100%; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,.1);
+      background: rgba(0,0,0,.15); color: inherit; outline: none;
+    }
+    .muted { opacity:.8; font-size:13px; margin-top:6px; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex:1; }
+    .btn {
+      margin-top:16px; width:100%; padding:14px; border:0; border-radius:12px; font-weight:700;
+      background: var(--tg-theme-button-color, #2ea6ff); color: var(--tg-theme-button-text-color, #fff);
+    }
+    .hint { margin-top:8px; font-size:14px; opacity:.9 }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Создать сделку</h1>
+
+      <label>Количество звёзд (⭐)</label>
+      <input id="stars" type="number" min="50" max="100000" step="50" placeholder="например, 1000" />
+
+      <div class="muted">Сумма к выплате рассчитывается из $0.010 за 1⭐ (10$ за 1000⭐).</div>
+      <div class="hint">К выплате (≈): <span id="payout">$0.00</span></div>
+
+      <label>Способ выплаты</label>
+      <select id="method">
+        <option value="cryptobot">CryptoBot (укажите @username)</option>
+        <option value="wallet">Криптокошелёк (адрес)</option>
+      </select>
+
+      <div id="field-cryptobot">
+        <label>@username получателя (CryptoBot)</label>
+        <input id="cryptobot" type="text" placeholder="@myname" />
+      </div>
+
+      <div id="field-wallet" style="display:none">
+        <label>Адрес криптокошелька</label>
+        <input id="wallet" type="text" placeholder="Адрес кошелька" />
+      </div>
+
+      <button class="btn" id="submit">Создать сделку</button>
+      <div class="muted">После отправки откроется счёт на оплату звёздами.</div>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand(); // растягиваем высоту
+      tg.enableClosingConfirmation(); // защита от случайного закрытия
+    }
+
+    const USD_PER_STAR = 0.01; // $0.010
+    const starsEl = document.getElementById('stars');
+    const payoutEl = document.getElementById('payout');
+    const methodEl = document.getElementById('method');
+    const cbEl = document.getElementById('cryptobot');
+    const wEl = document.getElementById('wallet');
+    const fieldCB = document.getElementById('field-cryptobot');
+    const fieldW = document.getElementById('field-wallet');
+
+    function recalc() {
+      const n = Math.max(0, Number(starsEl.value || 0));
+      payoutEl.textContent = `$${(n * USD_PER_STAR).toFixed(2)}`;
+    }
+    starsEl.addEventListener('input', recalc);
+    recalc();
+
+    methodEl.addEventListener('change', () => {
+      const m = methodEl.value;
+      fieldCB.style.display = (m === 'cryptobot') ? '' : 'none';
+      fieldW.style.display = (m === 'wallet') ? '' : 'none';
+    });
+
+    function alertNative(text) {
+      if (tg?.showAlert) tg.showAlert(text);
+      else window.alert(text);
+    }
+
+    document.getElementById('submit').addEventListener('click', () => {
+      const stars = Number(starsEl.value || 0);
+      if (!(stars >= 50 && stars <= 100000)) return alertNative('Введите от 50 до 100000⭐');
+      const method = methodEl.value;
+      let wallet = '';
+      if (method === 'cryptobot') {
+        wallet = (cbEl.value || '').trim();
+        if (!wallet.startsWith('@') || wallet.length < 3) return alertNative('Укажите корректный @username');
+      } else {
+        wallet = (wEl.value || '').trim();
+        if (wallet.length < 8) return alertNative('Слишком короткий адрес кошелька');
+      }
+
+      const payload = { stars, method, wallet };
+      try {
+        tg?.sendData(JSON.stringify(payload)); // отправим боту web_app_data
+        if (tg?.close) tg.close();
+      } catch (e) {
+        alertNative('Не удалось отправить данные. Откройте через кнопку в боте.');
+      }
+    });
+  </script>
+</body>
+</html>

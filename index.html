@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SEAMAN — Stars</title>
+  <meta name="color-scheme" content="dark light"/>
+  <style>
+    :root{
+      --bg: var(--tg-theme-bg-color, #0e1220);
+      --panel: color-mix(in oklab, var(--tg-theme-secondary-bg-color, #161b2c) 90%, #ffffff 0%);
+      --text: var(--tg-theme-text-color, #e9eef6);
+      --muted: color-mix(in oklab, var(--text) 60%, #000 40%);
+      --accent: var(--tg-theme-button-color, #2f89ff);
+      --accentText: var(--tg-theme-button-text-color, #fff);
+      --stroke: color-mix(in oklab, var(--text) 7%, #000 93%);
+      --card: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+      --gap: 12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at -10% -10%, #1f2f57 0%, transparent 60%),
+        radial-gradient(1200px 800px at 120% -20%, #212b55 0%, transparent 65%),
+        var(--bg);
+      color:var(--text);
+    }
+
+    .shell{min-height:100%; display:grid; grid-template-rows: auto 1fr auto;}
+    .header{display:flex; align-items:center; gap:12px; padding:16px}
+    .ava{
+      width:40px;height:40px;border-radius:50%;
+      background:linear-gradient(135deg,#4b6cb7,#182848);
+      display:grid;place-items:center;color:#fff;font-weight:700;box-shadow: var(--shadow);
+    }
+    .title{display:flex;flex-direction:column}
+    .title b{font-size:16px}
+    .title span{color:var(--muted);font-size:13px}
+
+    .content{padding: 0 16px 84px}
+
+    /* grid cards on home */
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap)}
+    .card{
+      background:var(--card); border:1px solid var(--stroke); border-radius:var(--radius);
+      padding:14px; box-shadow:var(--shadow); position:relative; overflow:hidden
+    }
+    .card h3{margin:2px 0 6px;font-size:15px}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px; font-size:12px; opacity:.9;
+      background:rgba(255,255,255,.06); padding:6px 10px; border-radius:999px; border:1px solid var(--stroke)
+    }
+    .ghost{
+      position:absolute; right:-20px; top:-20px; width:90px; height:90px; opacity:.15;
+      filter: blur(2px);
+    }
+
+    /* sell screen */
+    .panel{
+      background:var(--panel); border:1px solid var(--stroke); border-radius:calc(var(--radius) + 2px);
+      padding:16px; box-shadow: var(--shadow);
+    }
+    .h1{font-size:20px;margin:0 0 12px}
+    label{display:block; margin:12px 0 6px; color:var(--muted)}
+    input,select{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--stroke);
+      background:rgba(255,255,255,.04); color:var(--text); outline:none;
+    }
+    input:focus,select:focus{border-color: color-mix(in oklab, var(--accent) 60%, #fff 0%);}
+    .row{display:flex; gap:var(--gap)}
+    .row > *{flex:1}
+    .muted{color:var(--muted)}
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+    .chip{
+      border:1px solid var(--stroke); padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.05);
+      cursor:pointer; user-select:none;
+    }
+    .chip:hover{border-color: color-mix(in oklab, var(--accent) 50%, #fff 0%)}
+
+    .sum{
+      margin-top:8px; display:flex; justify-content:space-between; align-items:center;
+      background:rgba(255,255,255,.04); border:1px dashed var(--stroke); border-radius:12px; padding:10px 12px;
+    }
+    .sum b{font-size:16px}
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      width:100%; padding:14px; border-radius:12px; border:0; cursor:pointer;
+      background:linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 70%, #111 30%));
+      color:var(--accentText); font-weight:700; margin-top:14px; box-shadow: var(--shadow);
+    }
+    .btn:active{transform: translateY(1px)}
+
+    /* bottom nav */
+    .nav{
+      position:fixed; left:0; right:0; bottom:0; z-index:9;
+      display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+      padding:10px 14px; background: linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,.2), transparent 90%);
+      backdrop-filter: blur(10px);
+    }
+    .nav button{
+      background:rgba(255,255,255,.06); color:var(--text); border:1px solid var(--stroke);
+      padding:10px 8px; border-radius:12px; display:flex; flex-direction:column; align-items:center; gap:6px
+    }
+    .nav button.active{
+      background: linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
+      border-color: color-mix(in oklab, var(--accent) 50%, var(--stroke) 50%);
+    }
+    .nav svg{opacity:.9}
+
+    .section{display:none; gap:12px}
+    .section.active{display:block}
+
+    .lim{margin-top:6px; font-size:13px}
+    .ok{color:#8ee18e}
+    .warn{color:#ffcc66}
+    .err{color:#ff7a7a}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Header -->
+    <div class="header">
+      <div class="ava" id="ava">S</div>
+      <div class="title">
+        <b id="hello">SEAMAN</b>
+        <span id="uname">@username</span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Section: Home -->
+      <div class="section active" id="home">
+        <div class="grid">
+          <div class="card" onclick="go('sell')">
+            <svg class="ghost" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-7.8L2 9h7l3-7z"/></svg>
+            <div class="pill">Заработать</div>
+            <h3>Продать звёзды</h3>
+            <div class="muted">Лучшая цена • Быстрые выплаты</div>
+          </div>
+
+          <div class="card">
+            <svg class="ghost" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <div class="pill">Премиум</div>
+            <h3>Оформить Premium</h3>
+            <div class="muted">Скидки и бонусы скоро</div>
+          </div>
+
+          <div class="card">
+            <svg class="ghost" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <div class="pill">Подарки</div>
+            <h3>Дарить друзьям</h3>
+            <div class="muted">Скоро в приложении</div>
+          </div>
+
+          <div class="card">
+            <svg class="ghost" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h18v4H3z"/></svg>
+            <div class="pill">TON</div>
+            <h3>Купить TON</h3>
+            <div class="muted">Поддержка сетей и ботов</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Sell -->
+      <div class="section" id="sell">
+        <div class="panel">
+          <div class="h1">Продать звёзды</div>
+
+          <label>Звёзд</label>
+          <div class="row">
+            <input id="stars" type="number" min="50" max="100000" step="50" placeholder="например, 1000"/>
+            <select id="presets" aria-label="Выбрать пресет">
+              <option value="">Пресеты</option>
+              <option>100</option><option>250</option><option>500</option><option>1000</option>
+              <option>2000</option><option>5000</option>
+            </select>
+          </div>
+          <div class="chips">
+            <div class="chip" data-v="100">100⭐</div>
+            <div class="chip" data-v="250">250⭐</div>
+            <div class="chip" data-v="500">500⭐</div>
+            <div class="chip" data-v="1000">1000⭐</div>
+          </div>
+          <div class="muted lim">Ваш лимит в день: <b id="limit">100 000 ⭐</b></div>
+          <div class="sum">
+            <span class="muted">К выплате (≈)</span>
+            <b id="payout">$0.00</b>
+          </div>
+          <div class="muted" style="margin-top:6px">Расчёт: $0.010 за 1⭐ (10$ за 1000⭐)</div>
+
+          <label style="margin-top:14px">Способ выплаты</label>
+          <div class="row">
+            <select id="method">
+              <option value="cryptobot">CryptoBot (@username)</option>
+              <option value="wallet">Адрес кошелька</option>
+            </select>
+          </div>
+
+          <div id="field-cryptobot">
+            <label>@username получателя</label>
+            <input id="cryptobot" type="text" placeholder="@myname"/>
+            <div class="muted" style="margin-top:6px">Если получаете через @CryptoBot</div>
+          </div>
+
+          <div id="field-wallet" style="display:none">
+            <label>Адрес криптокошелька</label>
+            <input id="wallet" type="text" placeholder="Адрес (USDT, сеть TON или др.)"/>
+          </div>
+
+          <button class="btn" id="submit">
+            <!-- star -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-7.8L2 9h7l3-7z"/></svg>
+            Продать и получить счёт
+          </button>
+          <div class="muted" style="margin-top:8px">Нажимая кнопку вы соглашаетесь с условиями сервиса.</div>
+        </div>
+      </div>
+
+      <!-- Section: Market (placeholder) -->
+      <div class="section" id="market">
+        <div class="panel">
+          <div class="h1">Маркет</div>
+          <div class="muted">Тут появятся предложения и офферы. Следите за обновлениями 👀</div>
+        </div>
+      </div>
+
+      <!-- Section: Profile -->
+      <div class="section" id="profile">
+        <div class="panel">
+          <div class="h1">Профиль</div>
+          <div class="muted">Имя: <b id="p_name">—</b></div>
+          <div class="muted">Юзернейм: <b id="p_uname">—</b></div>
+          <div class="muted">ID: <b id="p_id">—</b></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom navigation -->
+    <div class="nav">
+      <button id="tab-home" class="active" onclick="go('home')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"/></svg>
+        Главная
+      </button>
+      <button id="tab-sell" onclick="go('sell')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-7.8L2 9h7l3-7z"/></svg>
+        Заработать
+      </button>
+      <button id="tab-market" onclick="go('market')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v4H3V5zm0 6h18v8H3v-8z"/></svg>
+        Маркет
+      </button>
+      <button id="tab-profile" onclick="go('profile')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.31 0-10 1.66-10 5v3h20v-3c0-3.34-6.69-5-10-5z"/></svg>
+        Профиль
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- Telegram WebApp API boot
+    const tg = window.Telegram?.WebApp;
+    tg?.expand?.();
+    tg?.enableClosingConfirmation?.();
+
+    // Fill header/profile from Telegram initData
+    const user = tg?.initDataUnsafe?.user || null;
+    const fname = user?.first_name || "SEAMAN";
+    const lname = user?.last_name ? " " + user.last_name : "";
+    const uname = user?.username ? "@" + user.username : "—";
+
+    document.getElementById('hello').textContent = fname + (lname || "");
+    document.getElementById('uname').textContent = uname;
+    document.getElementById('p_name').textContent = fname + (lname || "");
+    document.getElementById('p_uname').textContent = uname;
+    document.getElementById('p_id').textContent = user?.id ?? "—";
+    document.getElementById('ava').textContent = (fname[0] || "S").toUpperCase();
+
+    // --- navigation
+    function go(id){
+      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+      document.getElementById('tab-'+id).classList.add('active');
+      // фокус на поле звёзд при переходе на sell
+      if(id==='sell') setTimeout(()=>document.getElementById('stars').focus(), 50);
+    }
+
+    // --- business logic
+    const USD_PER_STAR = 0.01;
+    const minStars = 50, maxStars = 100000;
+
+    const starsEl = document.getElementById('stars');
+    const payoutEl = document.getElementById('payout');
+    const methodEl = document.getElementById('method');
+    const cbEl = document.getElementById('cryptobot');
+    const wEl = document.getElementById('wallet');
+    const fieldCB = document.getElementById('field-cryptobot');
+    const fieldW = document.getElementById('field-wallet');
+
+    function recalc(){
+      const n = Math.max(0, Number(starsEl.value || 0));
+      payoutEl.textContent = `$${(n * USD_PER_STAR).toFixed(2)}`;
+    }
+    starsEl.addEventListener('input', recalc);
+    recalc();
+
+    document.getElementById('presets').addEventListener('change', (e)=>{
+      const v = Number(e.target.value || 0);
+      if(v) { starsEl.value = v; recalc(); }
+    });
+
+    document.querySelectorAll('.chip').forEach(ch=>{
+      ch.addEventListener('click', ()=>{ starsEl.value = ch.dataset.v; recalc(); })
+    });
+
+    methodEl.addEventListener('change', ()=>{
+      const m = methodEl.value;
+      fieldCB.style.display = (m === 'cryptobot') ? '' : 'none';
+      fieldW.style.display = (m === 'wallet') ? '' : 'none';
+    });
+
+    function alertNative(text){
+      if (tg?.showAlert) tg.showAlert(text);
+      else alert(text);
+    }
+
+    document.getElementById('submit').addEventListener('click', () => {
+  const btn = document.getElementById('submit');
+
+  const stars = Number(starsEl.value || 0);
+  if (!(stars >= minStars && stars <= maxStars)) {
+    return alertNative(`Введите от ${minStars} до ${maxStars}⭐`);
+  }
+
+  const method = methodEl.value;
+  let wallet = '';
+  if (method === 'cryptobot') {
+    wallet = (cbEl.value || '').trim();
+    if (!wallet.startsWith('@') || wallet.length < 3) {
+      return alertNative('Укажите корректный @username (например, @myname)');
+    }
+  } else {
+    wallet = (wEl.value || '').trim();
+    if (wallet.length < 8) return alertNative('Слишком короткий адрес кошелька');
+  }
+
+  const payload = { stars, method, wallet, source: 'webapp' };
+
+  // 1) Жёстко проверяем, что мы внутри Telegram WebApp
+  if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initDataUnsafe?.user) {
+    alertNative('Похоже, вы открыли страницу не в Telegram. Откройте мини-приложение через кнопку в боте.');
+    return;
+  }
+
+  const tg = window.Telegram.WebApp;
+
+  // 2) UI: дизейблим кнопку, лёгкая вибрация
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  try { tg.HapticFeedback?.impactOccurred?.('medium'); } catch {}
+
+  try {
+    // 3) Без optional chaining — если что-то не так, реально упадёт в catch
+    tg.sendData(JSON.stringify(payload));
+
+    // 4) Дадим Telegram время отправить апдейт, потом закроем
+    setTimeout(() => {
+      try { tg.close(); } catch {}
+    }, 250);
+  } catch (e) {
+    alertNative('Не удалось отправить данные. Откройте мини-приложение через кнопку в боте.');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+});
+
+
+    // Быстрый переход: если открыли мини-аппу из чата — показываем сразу «sell»
+    go('sell');
+  </script>
+</body>
+</html>

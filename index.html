@@ -266,126 +266,151 @@
   </div>
 
   <script>
-    // --- Telegram WebApp API boot
-    const tg = window.Telegram?.WebApp;
-    tg?.expand?.();
-    tg?.enableClosingConfirmation?.();
+(function(){
+  // ---------- helpers ----------
+  function say(msg){ if (window.Telegram?.WebApp?.showAlert) Telegram.WebApp.showAlert(msg); else alert(msg); }
+  function el(id){ return document.getElementById(id); }
 
-    // Fill header/profile from Telegram initData
-    const user = tg?.initDataUnsafe?.user || null;
-    const fname = user?.first_name || "SEAMAN";
-    const lname = user?.last_name ? " " + user.last_name : "";
-    const uname = user?.username ? "@" + user.username : "—";
+  // ---------- init ----------
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  try { tg?.ready(); tg?.expand(); tg?.enableClosingConfirmation(); } catch {}
 
-    document.getElementById('hello').textContent = fname + (lname || "");
-    document.getElementById('uname').textContent = uname;
-    document.getElementById('p_name').textContent = fname + (lname || "");
-    document.getElementById('p_uname').textContent = uname;
-    document.getElementById('p_id').textContent = user?.id ?? "—";
-    document.getElementById('ava').textContent = (fname[0] || "S").toUpperCase();
+  // Диагностический блок
+  const diag = document.createElement('div');
+  diag.style.cssText = 'margin:10px 0;padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:8px;font-size:12px;opacity:.8';
+  const env = {
+    hasTelegram: !!window.Telegram,
+    hasWebApp: !!(window.Telegram && window.Telegram.WebApp),
+    hasSendData: !!(tg && typeof tg.sendData === 'function'),
+    hasUser: !!(tg && tg.initDataUnsafe && tg.initDataUnsafe.user),
+    platform: tg?.platform || 'n/a',
+    version: tg?.version || 'n/a',
+  };
+  diag.innerHTML = `
+    <b>Диагностика</b><br/>
+    Telegram: <code>${env.hasTelegram}</code> • WebApp: <code>${env.hasWebApp}</code> • sendData(): <code>${env.hasSendData}</code> • user: <code>${env.hasUser}</code><br/>
+    platform: <code>${env.platform}</code> • version: <code>${env.version}</code>
+  `;
+  document.querySelector('#sell .panel').prepend(diag);
 
-    // --- navigation
-    function go(id){
-      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-      document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-      document.getElementById('tab-'+id).classList.add('active');
-      // фокус на поле звёзд при переходе на sell
-      if(id==='sell') setTimeout(()=>document.getElementById('stars').focus(), 50);
+  // Кнопка Ping sendData
+  const pingBtn = document.createElement('button');
+  pingBtn.className = 'btn';
+  pingBtn.textContent = 'Проверка sendData';
+  pingBtn.style.marginTop = '10px';
+  pingBtn.onclick = () => {
+    if (!env.hasSendData) return say('❌ sendData недоступен. Откройте мини-аппу строго кнопкой в сообщении бота.');
+    try {
+      tg.sendData(JSON.stringify({ ping:true, ts:Date.now() }));
+      say('✅ sendData(ping) отправлен');
+      try { tg.HapticFeedback?.impactOccurred?.('light'); } catch {}
+    } catch (e) {
+      say('❌ Ошибка sendData: ' + (e?.message || e));
+    }
+  };
+  document.querySelector('#sell .panel').appendChild(pingBtn);
+
+  // ---------- профили/шапка ----------
+  const user = tg?.initDataUnsafe?.user || null;
+  const fname = user?.first_name || "SEAMAN";
+  const lname = user?.last_name ? " " + user.last_name : "";
+  const uname = user?.username ? "@" + user.username : "—";
+
+  el('hello').textContent = fname + (lname || "");
+  el('uname').textContent = uname;
+  el('p_name').textContent = fname + (lname || "");
+  el('p_uname').textContent = uname;
+  el('p_id').textContent = user?.id ?? "—";
+  el('ava').textContent = (fname[0] || "S").toUpperCase();
+
+  // ---------- навигация ----------
+  window.go = function(id){
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+id).classList.add('active');
+    if(id==='sell') setTimeout(()=>el('stars').focus(), 50);
+  };
+
+  // ---------- бизнес-логика ----------
+  const USD_PER_STAR = 0.01;
+  const minStars = 50, maxStars = 100000;
+
+  const starsEl = el('stars');
+  const payoutEl = el('payout');
+  const methodEl = el('method');
+  const cbEl = el('cryptobot');
+  const wEl = el('wallet');
+  const fieldCB = el('field-cryptobot');
+  const fieldW = el('field-wallet');
+
+  function recalc(){
+    const n = Math.max(0, Number(starsEl.value || 0));
+    payoutEl.textContent = `$${(n * USD_PER_STAR).toFixed(2)}`;
+  }
+  starsEl.addEventListener('input', recalc);
+  recalc();
+
+  el('presets').addEventListener('change', (e)=>{
+    const v = Number(e.target.value || 0);
+    if (v) { starsEl.value = v; recalc(); }
+  });
+  document.querySelectorAll('.chip').forEach(ch=>{
+    ch.addEventListener('click', ()=>{ starsEl.value = ch.dataset.v; recalc(); })
+  });
+
+  methodEl.addEventListener('change', ()=>{
+    const m = methodEl.value;
+    fieldCB.style.display = (m === 'cryptobot') ? '' : 'none';
+    fieldW.style.display = (m === 'wallet') ? '' : 'none';
+  });
+
+  function alertNative(text){ if (tg?.showAlert) tg.showAlert(text); else alert(text); }
+
+  // ---------- submit ----------
+  el('submit').addEventListener('click', () => {
+    const btn = el('submit');
+
+    const stars = Number(starsEl.value || 0);
+    if (!(stars >= minStars && stars <= maxStars)) {
+      return alertNative(`Введите от ${minStars} до ${maxStars}⭐`);
     }
 
-    // --- business logic
-    const USD_PER_STAR = 0.01;
-    const minStars = 50, maxStars = 100000;
-
-    const starsEl = document.getElementById('stars');
-    const payoutEl = document.getElementById('payout');
-    const methodEl = document.getElementById('method');
-    const cbEl = document.getElementById('cryptobot');
-    const wEl = document.getElementById('wallet');
-    const fieldCB = document.getElementById('field-cryptobot');
-    const fieldW = document.getElementById('field-wallet');
-
-    function recalc(){
-      const n = Math.max(0, Number(starsEl.value || 0));
-      payoutEl.textContent = `$${(n * USD_PER_STAR).toFixed(2)}`;
-    }
-    starsEl.addEventListener('input', recalc);
-    recalc();
-
-    document.getElementById('presets').addEventListener('change', (e)=>{
-      const v = Number(e.target.value || 0);
-      if(v) { starsEl.value = v; recalc(); }
-    });
-
-    document.querySelectorAll('.chip').forEach(ch=>{
-      ch.addEventListener('click', ()=>{ starsEl.value = ch.dataset.v; recalc(); })
-    });
-
-    methodEl.addEventListener('change', ()=>{
-      const m = methodEl.value;
-      fieldCB.style.display = (m === 'cryptobot') ? '' : 'none';
-      fieldW.style.display = (m === 'wallet') ? '' : 'none';
-    });
-
-    function alertNative(text){
-      if (tg?.showAlert) tg.showAlert(text);
-      else alert(text);
+    const method = methodEl.value;
+    let wallet = '';
+    if (method === 'cryptobot') {
+      wallet = (cbEl.value || '').trim();
+      if (!wallet.startsWith('@') || wallet.length < 3) {
+        return alertNative('Укажите корректный @username (например, @myname)');
+      }
+    } else {
+      wallet = (wEl.value || '').trim();
+      if (wallet.length < 8) return alertNative('Слишком короткий адрес кошелька');
     }
 
-    document.getElementById('submit').addEventListener('click', () => {
-  const btn = document.getElementById('submit');
+    const payload = { stars, method, wallet, source: 'webapp' };
 
-  const stars = Number(starsEl.value || 0);
-  if (!(stars >= minStars && stars <= maxStars)) {
-    return alertNative(`Введите от ${minStars} до ${maxStars}⭐`);
-  }
-
-  const method = methodEl.value;
-  let wallet = '';
-  if (method === 'cryptobot') {
-    wallet = (cbEl.value || '').trim();
-    if (!wallet.startsWith('@') || wallet.length < 3) {
-      return alertNative('Укажите корректный @username (например, @myname)');
+    // КРИТИЧЕСКОЕ: проверяем только наличие sendData
+    if (!env.hasSendData) {
+      return alertNative('Не вижу Telegram WebApp API (sendData). Откройте мини-приложение через кнопку в сообщении бота.');
     }
-  } else {
-    wallet = (wEl.value || '').trim();
-    if (wallet.length < 8) return alertNative('Слишком короткий адрес кошелька');
-  }
 
-  const payload = { stars, method, wallet, source: 'webapp' };
+    btn.disabled = true; btn.style.opacity = '0.7';
+    try { tg.HapticFeedback?.impactOccurred?.('medium'); } catch {}
 
-  // 1) Жёстко проверяем, что мы внутри Telegram WebApp
-  if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initDataUnsafe?.user) {
-    alertNative('Похоже, вы открыли страницу не в Telegram. Откройте мини-приложение через кнопку в боте.');
-    return;
-  }
+    try {
+      tg.sendData(JSON.stringify(payload));
+      // даём Телеге время доставить апдейт
+      setTimeout(() => { try { tg.close(); } catch {} }, 300);
+    } catch (e) {
+      alertNative('Не удалось отправить данные: ' + (e?.message || e));
+      btn.disabled = false; btn.style.opacity = '1';
+    }
+  });
 
-  const tg = window.Telegram.WebApp;
-
-  // 2) UI: дизейблим кнопку, лёгкая вибрация
-  btn.disabled = true;
-  btn.style.opacity = '0.7';
-  try { tg.HapticFeedback?.impactOccurred?.('medium'); } catch {}
-
-  try {
-    // 3) Без optional chaining — если что-то не так, реально упадёт в catch
-    tg.sendData(JSON.stringify(payload));
-
-    // 4) Дадим Telegram время отправить апдейт, потом закроем
-    setTimeout(() => {
-      try { tg.close(); } catch {}
-    }, 250);
-  } catch (e) {
-    alertNative('Не удалось отправить данные. Откройте мини-приложение через кнопку в боте.');
-    btn.disabled = false;
-    btn.style.opacity = '1';
-  }
-});
-
-
-    // Быстрый переход: если открыли мини-аппу из чата — показываем сразу «sell»
-    go('sell');
-  </script>
+  // автооткрытие секции sell
+  go('sell');
+})();
+</script>
 </body>
 </html>
